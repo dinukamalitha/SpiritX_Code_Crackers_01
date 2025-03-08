@@ -34,23 +34,6 @@ app.get("/", (req: Request, res: Response, next: NextFunction) => {
 
 app.use(errorHandler);
 
-/*
-app.get("/users", async(req, res) => {
-    try{
-        const client = await pool.connect();
-        console.log("Database Connection Successful");
-        const result = await client.query("SELECT * FROM user");
-        client.release();
-        res.json(result.rows);
-    }catch(err){
-        console.error("Error executing query",err);
-        res.status(500).json({
-            status: "Internal Server Error"
-        });
-    }
-});
-* */
-
 //Initialize Database
 const DBConnection = async () => {
     try {

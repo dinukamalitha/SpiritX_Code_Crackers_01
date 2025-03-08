@@ -1,5 +1,5 @@
 import {loginUser, registerUser} from "../services/auth.service";
-import {userSchema} from "../schema/registerSchema";
+import {userSchema} from "../schema/userSchema";
 import {Request, Response, NextFunction} from "express";
 import {CREATED, OK} from "../constants/http";
 import {setAuthCookies} from "../utils/cookies";
@@ -17,11 +17,11 @@ export const authController = {
 
     login: async (req: Request, res: Response, next: NextFunction): Promise<void> => {
         try{
-            const {email, password} = req.body;
-            const {userId, accessToken, refreshToken} = await loginUser(email, password);
+            const {username, password} = req.body;
+            const { accessToken, refreshToken} = await loginUser(username, password);
 
             setAuthCookies({res, accessToken, refreshToken})
-            res.status(OK).json({userId});
+            res.status(OK).json({accessToken});
         }catch(error){
             next(error);
         }
