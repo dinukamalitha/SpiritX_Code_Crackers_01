@@ -4,10 +4,12 @@ import React, { useEffect, useState } from "react";
 import { jwtDecode } from "jwt-decode";
 import ProtectedRoute from "@/components/ProtectedRoute/ProtectedRoute";
 import CustomButton from "@/components/Button/CustomButton";
-import {router} from "next/client";
+import { useRouter } from "next/navigation";
 
 const Dashboard = () => {
     const [username, setUsername] = useState("");
+
+    const router = useRouter();
 
     useEffect(() => {
         const fetchUsername = () => {
@@ -41,12 +43,12 @@ const Dashboard = () => {
 
     return (
         <ProtectedRoute>
-            <div>
-                <h1>Hello, {username}</h1>
+            <div className="flex flex-col items-center justify-center p-6">
+                <h1 className="text-4xl font-bold py-32">Hello, {username}</h1>
 
                 <CustomButton
                     buttonLabel={"LogOut"}
-                    buttonClassName="w-full py-3 text-white bg-gradient-to-r from-red-500 to-red-700 rounded-lg h-10"
+                    buttonClassName="w-1/4 py-3 text-white bg-gradient-to-r from-red-500 to-red-700 rounded-lg h-10"
                     onClick={handleLogout}
                 />
             </div>

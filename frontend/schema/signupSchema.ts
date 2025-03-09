@@ -1,8 +1,10 @@
-
 import { z } from 'zod';
 
 export const SignupSchema = z.object({
-    username: z.string().nonempty("Username is required"),
+    username: z
+        .string()
+        .nonempty("Username is required")
+        .min(8,"Username must be at least 8 characters long"),
     password: z
         .string()
         .nonempty("Password is required")

@@ -1,11 +1,10 @@
 "use client";
-
 import { createContext, useContext, useEffect, useState } from "react";
 import { jwtDecode } from "jwt-decode";
 import { useRouter } from "next/navigation";
 
 interface AuthContextType {
-    user: string | null;
+    user: { username: string } | null;
     login: (token: string) => void;
     logout: () => void;
 }
@@ -13,16 +12,15 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
-    const [user, setUser] = useState<string | null>(null);
+    const [user, setUser] = useState<{ username: string } | null>(null);
     const router = useRouter();
 
     useEffect(() => {
         const token = localStorage.getItem("accessToken");
-
         if (token) {
             try {
-                const decoded: any = jwtDecode(token);
-                setUser(decoded.username || decoded.sub);
+                const decoded: { username: string } = jwtDecode(token);
+                setUser({ username: decoded.username });
             } catch (error) {
                 console.error("Invalid token:", error);
                 logout();
@@ -30,30 +28,17 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         }
     }, []);
 
-    // Redirect user to dashboard when they log in
-    useEffect(() => {
-        if (user) {
-            router.push("/dashboard");
-        }
-    }, [user, router]);
-
     const login = (token: string) => {
         localStorage.setItem("accessToken", token);
-        try {
-            const decoded: any = jwtDecode(token);
-            const username = decoded.username || decoded.sub;
-            setUser(username);
-            router.push( "/dashboard");
-        } catch (error) {
-            console.error("Token decoding failed:", error);
-            logout();
-        }
+        const decoded: { username: string } = jwtDecode(token);
+        setUser({ username: decoded.username });
+        router.push("/dashboard");
     };
 
     const logout = () => {
         localStorage.removeItem("accessToken");
         setUser(null);
-        router.replace("/login");
+        router.push("/login");
     };
 
     return (
