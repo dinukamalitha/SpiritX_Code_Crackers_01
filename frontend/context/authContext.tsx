@@ -28,11 +28,20 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         }
     }, []);
 
+
+    useEffect(() => {
+        if (user) {
+            router.push("/dashboard");
+        }
+    }, [user]);
+
     const login = (token: string) => {
         localStorage.setItem("accessToken", token);
         const decoded: { username: string } = jwtDecode(token);
         setUser({ username: decoded.username });
-        router.push("/dashboard");
+
+
+        setTimeout(() => router.push("/dashboard"), 0);
     };
 
     const logout = () => {

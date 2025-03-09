@@ -20,7 +20,7 @@ const LoginForm = () => {
         password: "",
     });
 
-    const [errors, setErrors] = useState<string | null>(null);
+    const [errors, setErrors] = useState<Record<string, string>>({});
     const [loading, setLoading] = useState(false);
     const [showAlert, setShowAlert] = useState(false);
 
@@ -34,6 +34,8 @@ const LoginForm = () => {
             ...formData,
             [value]: e.target.value,
         });
+
+        setErrors((prevErrors) => ({ ...prevErrors, [value]: "" }));
     };
 
     const handleLogin = async (e: FormEvent) => {
@@ -42,12 +44,16 @@ const LoginForm = () => {
         const validation = LoginSchema.safeParse(formData);
 
         if (!validation.success) {
-            setErrors(validation.error.errors[0]?.message || "Invalid input");
+            const fieldErrors: Record<string, string> = {};
+            validation.error.errors.forEach((err) => {
+                fieldErrors[err.path[0]] = err.message;
+            });
+            setErrors(fieldErrors);
             return;
         }
 
         setLoading(true);
-        setErrors(null);
+        setErrors({});
 
         try {
             await userLogin(formData, router);
@@ -55,14 +61,18 @@ const LoginForm = () => {
             console.log("Username: ", formData.username, "Password: ", formData.password);
 
             setFormData({ username: "", password: "" });
-
             setShowAlert(true);
-        } catch (error: unknown) {
+        } catch (error) {
             console.log(error);
-            setErrors("Invalid input");
+            setErrors({ general: "Invalid username or password. Please try again." });
         } finally {
             setLoading(false);
         }
+    };
+
+    const handleRedirect = () => {
+        setShowAlert(false);
+        router.push("/dashboard");
     };
 
     return (
@@ -80,32 +90,34 @@ const LoginForm = () => {
                     </div>
 
                     <form onSubmit={handleLogin}>
-                        {/* Input Fields */}
-                        <div className="my-8">
-                            <div className="mb-4 mt-4">
-                                <InputField
-                                    id="username"
-                                    type="text"
-                                    placeholder="Username"
-                                    value={formData.username}
-                                    onChange={(e) => handleInputChange(e, "username")}
-                                    icon={undefined}
-                                    label={false}
-                                    labelName="username"
-                                />
-                            </div>
-                            <div className="mb-4">
-                                <InputField
-                                    id="password"
-                                    type="password"
-                                    placeholder="Password"
-                                    value={formData.password}
-                                    onChange={(e) => handleInputChange(e, "password")}
-                                    icon={undefined}
-                                    label={false}
-                                    labelName=""
-                                />
-                            </div>
+                        {/* Username Field */}
+                        <div className="mb-4">
+                            <InputField
+                                id="username"
+                                type="text"
+                                placeholder="Username"
+                                value={formData.username}
+                                onChange={(e) => handleInputChange(e, "username")}
+                                icon={undefined}
+                                label={false}
+                                labelName="username"
+                            />
+                            {errors.username && <p className="text-red-500 text-sm">{errors.username}</p>}
+                        </div>
+
+                        {/* Password Field */}
+                        <div className="mb-4">
+                            <InputField
+                                id="password"
+                                type="password"
+                                placeholder="Password"
+                                value={formData.password}
+                                onChange={(e) => handleInputChange(e, "password")}
+                                icon={undefined}
+                                label={false}
+                                labelName="password"
+                            />
+                            {errors.password && <p className="text-red-500 text-sm">{errors.password}</p>}
                         </div>
 
                         {/* Login Button */}
@@ -117,7 +129,8 @@ const LoginForm = () => {
                         </div>
                     </form>
 
-                    {errors && <p className="text-red-500 text-center mt-4">{errors}</p>}
+                    {/* General Error Message */}
+                    {errors.general && <p className="text-red-500 text-center mt-4">{errors.general}</p>}
 
                     <div className="text-center mt-6">
                         <p className="text-gray-500">
@@ -135,7 +148,7 @@ const LoginForm = () => {
                 <AlertDialogComponent
                     title="Login Successful!"
                     description="You will be redirected to your dashboard."
-                    onConfirm={() => router.push("/dashboard")}
+                    onConfirm={handleRedirect}
                 />
             )}
         </div>

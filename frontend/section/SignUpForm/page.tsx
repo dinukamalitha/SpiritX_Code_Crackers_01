@@ -22,10 +22,11 @@ const SignupForm = () => {
         confirmPassword: "",
     });
 
-    const [errors, setErrors] = useState<string | null>(null);
+    const [errors, setErrors] = useState<Record<string, string>>({});
     const [loading, setLoading] = useState(false);
     const [showAlert, setShowAlert] = useState(false);
     const [passwordStrength, setPasswordStrength] = useState("");
+    const [passwordMatchProgress, setPasswordMatchProgress] = useState(0);
 
     const router = useRouter();
 
@@ -33,28 +34,42 @@ const SignupForm = () => {
         e: React.ChangeEvent<HTMLInputElement>,
         value: keyof SignUpFormValues
     ) => {
-        const newValue = e.target.value;
-        setFormData({
-            ...formData,
-            [value]: newValue,
-        });
+        setFormData({ ...formData, [value]: e.target.value });
 
         if (value === "password") {
-            evaluatePasswordStrength(newValue);
+            evaluatePasswordStrength(e.target.value);
         }
+        if (value === "confirmPassword") {
+            evaluatePasswordMatch(formData.password, e.target.value);
+        }
+
+        // Remove error message when user starts typing
+        setErrors((prevErrors) => ({ ...prevErrors, [value]: "" }));
     };
 
     const evaluatePasswordStrength = (password: string) => {
-        if (password.length < 6) {
+        const hasUpperCase = /[A-Z]/.test(password);
+        const hasLowerCase = /[a-z]/.test(password);
+        const hasSpecialChar = /[^A-Za-z0-9]/.test(password);
+
+        if (password.length < 8) {
             setPasswordStrength("Weak");
-        } else if (
-            /[A-Z]/.test(password) &&
-            /[0-9]/.test(password) &&
-            /[^A-Za-z0-9]/.test(password)
-        ) {
+        } else if (hasUpperCase && hasLowerCase && hasSpecialChar) {
             setPasswordStrength("Strong");
         } else {
             setPasswordStrength("Moderate");
+        }
+    };
+
+
+    const evaluatePasswordMatch = (password: string, confirmPassword: string) => {
+        if (!confirmPassword) {
+            setPasswordMatchProgress(0);
+        } else if (password.startsWith(confirmPassword)) {
+            const matchPercentage = (confirmPassword.length / password.length) * 100;
+            setPasswordMatchProgress(matchPercentage);
+        } else {
+            setPasswordMatchProgress(10); // Slight progress if there's no match
         }
     };
 
@@ -62,30 +77,35 @@ const SignupForm = () => {
         e.preventDefault();
 
         if (passwordStrength === "Weak") {
-            setErrors("Password is too weak. Please use a stronger password.");
+            setErrors({ password: "Password is too weak. Please use a stronger password." });
+            return;
+        }
+
+        if (formData.password !== formData.confirmPassword) {
+            setErrors({ confirmPassword: "Passwords do not match." });
             return;
         }
 
         const validation = SignupSchema.safeParse(formData);
 
         if (!validation.success) {
-            setErrors(validation.error.errors[0]?.message || "Invalid input");
+            const fieldErrors: Record<string, string> = {};
+            validation.error.errors.forEach((err) => {
+                fieldErrors[err.path[0]] = err.message;
+            });
+            setErrors(fieldErrors);
             return;
         }
 
         setLoading(true);
         try {
             await userSignUp(formData, router);
-            console.log("Username: ", formData.username, "Password: ", formData.password);
-            setFormData({
-                username: "",
-                password: "",
-                confirmPassword: "",
-            });
             setShowAlert(true);
-        } catch (error: unknown) {
-            console.log(error);
-            setErrors("Invalid input");
+            setFormData({ username: "", password: "", confirmPassword: "" });
+            setPasswordMatchProgress(0);
+
+        } catch (error) {
+            setErrors({ general: "Signup failed. Please try again." });
         } finally {
             setLoading(false);
         }
@@ -106,65 +126,89 @@ const SignupForm = () => {
                     </div>
 
                     <form onSubmit={handleSignUp}>
-                        {/* Input Fields */}
-                        <div className="my-8">
-                            <div className="mb-4 mt-4">
-                                <InputField
-                                    id="username"
-                                    type="text"
-                                    placeholder="Username"
-                                    value={formData.username}
-                                    onChange={(e) => handleInputChange(e, "username")}
-                                    icon={undefined}
-                                    label={false}
-                                    labelName="username"
-                                />
-                            </div>
+                        {/* Username Field */}
+                        <div className="mb-4">
+                            <InputField
+                                id="username"
+                                type="text"
+                                placeholder="Username"
+                                value={formData.username}
+                                onChange={(e) => handleInputChange(e, "username")}
+                                icon={undefined}
+                                label={false}
+                                labelName="username"
+                            />
+                            {errors.username && <p className="text-red-500 text-sm">{errors.username}</p>}
+                        </div>
 
-                            <div className="mb-4">
-                                <InputField
-                                    id="password"
-                                    type="password"
-                                    placeholder="Password"
-                                    value={formData.password}
-                                    onChange={(e) => handleInputChange(e, "password")}
-                                    icon={undefined}
-                                    label={false}
-                                    labelName="password"
-                                />
-                                {/* Password Strength Indicator */}
-                                {formData.password && (
-                                    <div className="mt-2">
-                                        <p className="text-sm">Password Strength:</p>
-                                        <div
-                                            className={`h-2 mt-1 rounded-lg ${
-                                                passwordStrength === "Weak"
-                                                    ? "bg-red-500"
-                                                    : passwordStrength === "Moderate"
-                                                        ? "bg-yellow-500"
-                                                        : "bg-green-500"
-                                            }`}
-                                            style={{ width: passwordStrength === "Weak" ? "33%" : passwordStrength === "Moderate" ? "66%" : "100%" }}
-                                        />
-                                        <p className="text-sm mt-1 font-semibold text-gray-700">
-                                            {passwordStrength}
-                                        </p>
-                                    </div>
-                                )}
-                            </div>
+                        {/* Password Field */}
+                        <div className="mb-4">
+                            <InputField
+                                id="password"
+                                type="password"
+                                placeholder="Password"
+                                value={formData.password}
+                                onChange={(e) => handleInputChange(e, "password")}
+                                icon={undefined}
+                                label={false}
+                                labelName="password"
+                            />
+                            {/* Password Strength Indicator */}
+                            {formData.password && (
+                                <div className="mt-2">
+                                    <p className="text-sm">Password Strength:</p>
+                                    <div
+                                        className={`h-2 mt-1 rounded-lg ${
+                                            passwordStrength === "Weak"
+                                                ? "bg-red-500"
+                                                : passwordStrength === "Moderate"
+                                                    ? "bg-yellow-500"
+                                                    : "bg-green-500"
+                                        }`}
+                                        style={{ width: passwordStrength === "Weak" ? "33%" : passwordStrength === "Moderate" ? "66%" : "100%" }}
+                                    />
+                                    <p className="text-sm mt-1 font-semibold text-gray-700">
+                                        {passwordStrength}
+                                    </p>
+                                </div>
+                            )}
+                            {errors.password && <p className="text-red-500 text-sm">{errors.password}</p>}
+                        </div>
 
-                            <div className="mb-4">
-                                <InputField
-                                    id="confirmPassword"
-                                    type="password"
-                                    placeholder="Confirm Password"
-                                    value={formData.confirmPassword}
-                                    onChange={(e) => handleInputChange(e, "confirmPassword")}
-                                    icon={undefined}
-                                    label={false}
-                                    labelName="confirmPassword"
-                                />
-                            </div>
+                        {/* Confirm Password Field */}
+                        <div className="mb-4">
+                            <InputField
+                                id="confirmPassword"
+                                type="password"
+                                placeholder="Confirm Password"
+                                value={formData.confirmPassword}
+                                onChange={(e) => handleInputChange(e, "confirmPassword")}
+                                icon={undefined}
+                                label={false}
+                                labelName="confirmPassword"
+                            />
+                            {/* Password Match Progress Indicator */}
+                            {formData.confirmPassword && (
+                                <div className="mt-2">
+                                    <p className="text-sm">Password Match:</p>
+                                    <div
+                                        className={`h-2 mt-1 rounded-lg ${
+                                            passwordMatchProgress < 50
+                                                ? "bg-red-500"
+                                                : passwordMatchProgress < 100
+                                                    ? "bg-yellow-500"
+                                                    : "bg-green-500"
+                                        }`}
+                                        style={{ width: `${passwordMatchProgress}%` }}
+                                    />
+                                    <p className="text-sm mt-1 font-semibold text-gray-700">
+                                        {passwordMatchProgress < 100 ? "Incomplete" : "Matched"}
+                                    </p>
+                                </div>
+                            )}
+                            {errors.confirmPassword && (
+                                <p className="text-red-500 text-sm">{errors.confirmPassword}</p>
+                            )}
                         </div>
 
                         {/* Sign Up Button */}
@@ -175,9 +219,6 @@ const SignupForm = () => {
                             />
                         </div>
                     </form>
-
-                    {/* Error Message */}
-                    {errors && <p className="text-red-500 text-center mt-4">{errors}</p>}
 
                     {/* Login Link */}
                     <div className="text-center mt-6">
@@ -190,8 +231,7 @@ const SignupForm = () => {
                     </div>
                 </div>
             </div>
-
-            {/* Alert Dialog */}
+            {/* Alert Dialog for Success */}
             {showAlert && (
                 <AlertDialogComponent
                     title="Sign Up Successful!"
